@@ -7,6 +7,7 @@
 **.pth
 isl_parliament_gpt/*
 tokenizer/*
+isl_parliament_gpt/isl_parliament_gpt.pth
 
 
 # Byte-compiled / optimized / DLL files
