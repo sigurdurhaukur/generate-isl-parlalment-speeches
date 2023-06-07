@@ -5,7 +5,9 @@
 **isl_parliament_gpt**
 **.zip
 **.pth
-/isl_parliament_gpt/isl_parliament_gpt.pth
+isl_parliament_gpt/*
+tokenizer/*
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
