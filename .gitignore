@@ -9,6 +9,7 @@ isl_parliament_gpt/*
 **tokenizer/*
 isl_parliament_gpt/isl_parliament_gpt.pth
 **tokenizer**
+**Haukur**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
