@@ -25,7 +25,3 @@ def get_all_paths_in_dir(path, max_paths=None):
                 break
 
     return all_paths
-
-
-def is_rank_0() -> bool:
-    return int(os.environ.get("RANK", "0")) == 0
