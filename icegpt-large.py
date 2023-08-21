@@ -38,10 +38,11 @@ deepspeed --num_gpus=1 ./icegpt-large.py \
 --overwrite_cache \
 --evaluation_strategy="steps" \
 --output_dir ./icegpt-xl \
+--overwrite_output_dir \
 --eval_steps 200 \
 --num_train_epochs 1 \
---gradient_accumulation_steps 2 \
---per_device_train_batch_size 8
+--gradient_accumulation_steps 8 \
+--per_device_train_batch_size 2
 
 """
 
@@ -99,10 +100,6 @@ if is_main_process(training_args.local_rank):
     transformers.utils.logging.enable_explicit_format()
 logger.info("Training/evaluation parameters %s", training_args)
 
-
-scale = 1
-output_dir = "icegpt-xl"
-
 # Suppress warnings
 print("\n" * 3)
 
@@ -111,7 +108,8 @@ print_gpu_utilization()
 
 # Collect paths
 print("Collecting all paths...")
-all_paths = get_all_paths_in_dir("./processed_data", max_paths=1000)
+# all_paths = get_all_paths_in_dir("./processed_data", max_paths=1000) # for testing
+all_paths = get_all_paths_in_dir("./processed_data_journals")
 
 # Load or train tokenizer
 # tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -124,14 +122,13 @@ tokenizer = AutoTokenizer.from_pretrained("./ice-tokenizer-large")
 print("Done.", tokenizer)
 
 # Split train and test paths
+print("Splitting train and test paths...")
 train_paths = all_paths[: int(len(all_paths) * 0.8)]
 test_paths = all_paths[int(len(all_paths) * 0.8) :]
 
 # Load dataset
+print("Loading dataset...")
 dataset = load_dataset("text", data_files={"train": train_paths, "test": test_paths})
-
-# GPU utilization
-print_gpu_utilization()
 
 context_length = 512
 
@@ -141,7 +138,13 @@ data_collator = DataCollatorForLanguageModeling(
 )
 
 
+print(dataset["train"][0])
+
+
 def tokenize_function(examples):
+    # add eos token
+    examples["text"] = [text + tokenizer.eos_token for text in examples["text"]]
+
     outputs = tokenizer(
         examples["text"],
         truncation=True,
@@ -156,32 +159,35 @@ tokenized_dataset = dataset.map(
     tokenize_function,
     batched=True,
     batch_size=1000,
-    num_proc=4,
+    # num_proc=4,
     remove_columns=["text"],
 )
 
+print_gpu_utilization()
+
 
 # Model configuration 140M parameters
-configuration = GPT2Config(
-    vocab_size=len(tokenizer),
-    n_ctx=context_length,
-    bos_token_id=tokenizer.bos_token_id,
-    eos_token_id=tokenizer.eos_token_id,
-    n_embd=int(768),
-    n_layer=int(12),
-    n_head=int(12),
-)
-
-# 1.23B parameters
 # configuration = GPT2Config(
 #     vocab_size=len(tokenizer),
-#     n_positions=context_length,
-#     n_embd=1750,
-#     n_layer=32,
-#     n_head=25,
+#     n_ctx=context_length,
 #     bos_token_id=tokenizer.bos_token_id,
 #     eos_token_id=tokenizer.eos_token_id,
+#     n_embd=int(768),
+#     n_layer=int(12),
+#     n_head=int(12),
 # )
+
+
+# 1B parameters
+configuration = GPT2Config(
+    vocab_size=len(tokenizer),
+    n_positions=context_length,
+    n_embd=1200,
+    n_layer=24,
+    n_head=12,
+    bos_token_id=tokenizer.bos_token_id,
+    eos_token_id=tokenizer.eos_token_id,
+)
 
 # Initialize model
 model = GPT2LMHeadModel(configuration)
