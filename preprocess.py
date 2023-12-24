@@ -57,23 +57,26 @@ def clean_dir(path):
 
 if __name__ == "__main__":
     print("Collecting all paths...")
-    all_paths = collect_all_paths_in_dir("data/")
+    save_dir = "processed_data/"
+    all_paths = collect_all_paths_in_dir("data/", max_paths=None)
 
-    if os.path.exists("processed_data_journals/"):
-        clean_dir("processed_data_journals/")
-        print("Cleaned processed_data_journals/")
+    if os.path.exists(save_dir):
+        clean_dir(save_dir)
+        print(f"Cleaned {save_dir}")
     else:
-        os.mkdir("processed_data_journals/")
-        print("Created processed_data_journals/")
+        os.mkdir(save_dir)
+        print(f"Created {save_dir}")
 
     print("Processing...")
     for i, path in enumerate(all_paths):
         try:
             data = XML_file(path).read_xml()
-            new_path = "./processed_data_journals/" + str(i) + ".txt"
+            new_path = save_dir + str(i) + ".txt"
             save(new_path, data)
 
-            print("Processed: " + str(i) + "/" + str(len(all_paths)))
+            print(
+                f"Processed:  {i} / {len(all_paths)} total left: {len(all_paths) - i}"
+            )
         except Exception as e:
             print("could not process file: " + path)
             print("Error: " + str(e))

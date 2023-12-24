@@ -43,6 +43,7 @@ deepspeed --num_gpus=1 ./icegpt-large.py \
 --num_train_epochs 1 \
 --gradient_accumulation_steps 8 \
 --per_device_train_batch_size 2
+--max_steps 1000
 
 """
 
@@ -108,8 +109,8 @@ print_gpu_utilization()
 
 # Collect paths
 print("Collecting all paths...")
-# all_paths = get_all_paths_in_dir("./processed_data", max_paths=1000) # for testing
-all_paths = get_all_paths_in_dir("./processed_data_journals")
+# all_paths = get_all_paths_in_dir("./processed_data", max_paths=1000)  # for testing
+all_paths = get_all_paths_in_dir("./processed_data")
 
 # Load or train tokenizer
 # tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -128,7 +129,9 @@ test_paths = all_paths[int(len(all_paths) * 0.8) :]
 
 # Load dataset
 print("Loading dataset...")
-dataset = load_dataset("text", data_files={"train": train_paths, "test": test_paths})
+dataset = load_dataset(
+    "text", data_files={"train": train_paths, "test": test_paths}, streaming=True
+).with_format("torch")
 
 context_length = 512
 
@@ -138,7 +141,7 @@ data_collator = DataCollatorForLanguageModeling(
 )
 
 
-print(dataset["train"][0])
+# print(dataset["train"][0])
 
 
 def tokenize_function(examples):
@@ -162,6 +165,13 @@ tokenized_dataset = dataset.map(
     # num_proc=4,
     remove_columns=["text"],
 )
+next(iter(tokenized_dataset))
+
+
+print("Tokenized dataset:")
+print(tokenized_dataset)
+# assert isinstance(tokenized_dataset, torch.utils.data.IterableDataset)
+# print(len(tokenized_dataset["train"]))
 
 print_gpu_utilization()
 
@@ -178,7 +188,7 @@ print_gpu_utilization()
 # )
 
 
-# 1B parameters
+# 451.7M parameters
 configuration = GPT2Config(
     vocab_size=len(tokenizer),
     n_positions=context_length,
@@ -251,6 +261,8 @@ if training_args.do_eval:
     if data_args.max_val_samples is not None:
         eval_dataset = eval_dataset.select(range(data_args.max_val_samples))
 
+# add max steps
+training_args.max_steps = 500_000
 
 # Trainer
 trainer = Trainer(
